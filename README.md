@@ -1,9 +1,8 @@
 # Actividad: Métodos numéricos para ecuaciones no lineales
 
-**Autor:** _(tu nombre)_
-**Curso:** _(nombre del curso)_
-**Docente:** _(nombre del docente)_
-**Fecha:** _(fecha de entrega)_
+**Autor:** Valery Montes Echavez
+**Curso:** Métodos Númericos
+**Docente:** Caterine Diaz
 
 ## Descripción
 
@@ -193,5 +192,3 @@ git branch -M main
 git remote add origin https://github.com/<usuario>/<repositorio>.git
 git push -u origin main
 ```
-### Autor
-Valery Montes Echavez - 01240372023
