@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tablas de métodos numéricos</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f6f7fb;--card:#fff;--tx:#1b2333;--mut:#5d6779;--bd:#d9deea;--ac:#0b4ea2;--acx:#fff;--hd:#e8eefb;--ok:#0a7a3d;--er:#b3261e}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10141c;--card:#181e29;--tx:#e8ecf4;--mut:#9aa5b8;--bd:#2c3547;--ac:#6ea8ff;--acx:#0b1220;--hd:#1f2a40;--ok:#5fd18b;--er:#ff8a80}}
+:root[data-theme="dark"]{--bg:#10141c;--card:#181e29;--tx:#e8ecf4;--mut:#9aa5b8;--bd:#2c3547;--ac:#6ea8ff;--acx:#0b1220;--hd:#1f2a40;--ok:#5fd18b;--er:#ff8a80}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:980px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:1.4rem;margin:0 0 4px}
+.sub{color:var(--mut);margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+label{display:block;font-size:.8rem;color:var(--mut);margin-bottom:4px}
+select,input{width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+button{padding:9px 16px;border-radius:8px;border:1px solid var(--ac);background:var(--ac);color:var(--acx);font:inherit;font-weight:600;cursor:pointer}
+button.sec{background:transparent;color:var(--ac)}
+#info{margin:0 0 10px;font-weight:600}
+.ok{color:var(--ok)}.er{color:var(--er)}
+.wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:.85rem}
+th,td{padding:6px 10px;border-bottom:1px solid var(--bd);text-align:right;white-space:nowrap}
+th{background:var(--hd);position:sticky;top:0}
+th:first-child,td:first-child{text-align:center}
+.fx{font-family:ui-monospace,Consolas,monospace;font-size:.85rem;color:var(--mut);margin:0 0 10px}
+</style>
+</head>
+<body>
+<main>
+<h1>Tablas de métodos numéricos</h1>
+<p class="sub">Elige la función y el método; la tabla se llena sola y la puedes copiar a Excel.</p>
+
+<div class="card">
+<div class="grid">
+<div><label for="fn">Función</label>
+<select id="fn">
+<option value="ln">f(x) = ln(x) − 2x + 3</option>
+<option value="cub">f(x) = x³ − 3x − 4</option>
+<option value="quad">f(x) = x² − x + 6</option>
+<option value="sin">f(x) = 2·sen(x) − x</option>
+</select></div>
+<div><label for="mt">Método</label>
+<select id="mt">
+<option value="sec">Secante</option>
+<option value="new">Newton-Raphson</option>
+<option value="bis">Bisección</option>
+</select></div>
+<div><label for="x0" id="l0">x₀</label><input id="x0" type="number" step="any"></div>
+<div><label for="x1" id="l1">x₁</label><input id="x1" type="number" step="any"></div>
+<div><label for="tol">Tolerancia</label><input id="tol" type="number" step="any" value="1e-10"></div>
+<div><label for="nmax">Máx. iteraciones</label><input id="nmax" type="number" value="15" min="1" max="100"></div>
+<div><label for="dec">Decimales</label><input id="dec" type="number" value="10" min="1" max="15"></div>
+<div><label for="sep">Separador decimal</label>
+<select id="sep"><option value=".">Punto (1.5)</option><option value=",">Coma (1,5)</option></select></div>
+</div>
+<div class="btns">
+<button id="go">Calcular tabla</button>
+<button id="cp" class="sec">Copiar para Excel</button>
+</div>
+</div>
+
+<div class="card">
+<p id="info"></p>
+<p class="fx" id="fx"></p>
+<div class="wrap"><table id="tb"></table></div>
+</div>
+</main>
+
+<script>
+const F={
+ln:{f:x=>Math.log(x)-2*x+3,d:x=>1/x-2,a:1,b:2,t:"f(x) = LN(x) - 2*x + 3"},
+cub:{f:x=>x**3-3*x-4,d:x=>3*x*x-3,a:5,b:7,t:"f(x) = x^3 - 3*x - 4"},
+quad:{f:x=>x*x-x+6,d:x=>2*x-1,a:1,b:2,t:"f(x) = x^2 - x + 6  (sin raíces reales)"},
+sin:{f:x=>2*Math.sin(x)-x,d:x=>2*Math.cos(x)-1,a:1,b:2,t:"f(x) = 2*SENO(x) - x"}
+};
+const $=id=>document.getElementById(id);
+let data={head:[],rows:[]};
+
+function setDefaults(){
+  const o=F[$("fn").value];
+  $("x0").value=o.a;$("x1").value=o.b;
+  const m=$("mt").value;
+  $("l0").textContent=m==="new"?"x₀ (punto inicial)":m==="bis"?"a (extremo izq.)":"x₀";
+  $("l1").textContent=m==="bis"?"b (extremo der.)":"x₁";
+  $("x1").disabled=m==="new";
+  $("fx").textContent=o.t;
+}
+
+function run(){
+  const o=F[$("fn").value],f=o.f,d=o.d,m=$("mt").value;
+  const tol=parseFloat($("tol").value)||1e-10,N=Math.min(100,parseInt($("nmax").value)||15);
+  let a=parseFloat($("x0").value),b=parseFloat($("x1").value);
+  const rows=[];let head,msg="",ok=false,last=NaN;
+  if(m==="sec"){
+    head=["i","X0","X1","f(X0)","f(X1)","Xi","f(Xi)","|Xi - Xi-1|"];
+    for(let i=1;i<=N;i++){
+      const fa=f(a),fb=f(b),den=fb-fa;
+      if(den===0){msg="Se detuvo: f(X1) = f(X0), el denominador es cero.";break}
+      const x=b-fb*(b-a)/den,fx=f(x),e=Math.abs(x-b);
+      if(!isFinite(x)){msg="Se detuvo: el valor dejó de ser finito.";break}
+      rows.push([i,a,b,fa,fb,x,fx,e]);last=x;a=b;b=x;
+      if(Math.abs(fx)<tol||e<tol){ok=true;break}
+    }
+  }else if(m==="new"){
+    head=["i","X(i-1)","f(X(i-1))","f′(X(i-1))","Xi","f(Xi)","|Xi - Xi-1|"];
+    let x=a;
+    for(let i=1;i<=N;i++){
+      const fx=f(x),dx=d(x);
+      if(Math.abs(dx)<1e-14){msg="Se detuvo: la derivada es casi cero.";break}
+      const n=x-fx/dx,fn=f(n),e=Math.abs(n-x);
+      if(!isFinite(n)){msg="Se detuvo: el valor dejó de ser finito (log de un número no positivo, por ejemplo).";break}
+      rows.push([i,x,fx,dx,n,fn,e]);last=n;x=n;
+      if(Math.abs(fn)<tol||e<tol){ok=true;break}
+    }
+  }else{
+    head=["i","a","b","f(a)","f(b)","c","f(c)","|c - c anterior|"];
+    if(!(f(a)*f(b)<0)){msg="Bisección requiere f(a) y f(b) con signos opuestos en este intervalo.";}
+    else{let prev=NaN;
+      for(let i=1;i<=N;i++){
+        const c=(a+b)/2,fc=f(c),e=isNaN(prev)?Math.abs(b-a)/2:Math.abs(c-prev);
+        rows.push([i,a,b,f(a),f(b),c,fc,e]);last=c;prev=c;
+        if(Math.abs(fc)<tol||e<tol){ok=true;break}
+        if(f(a)*fc<0)b=c;else a=c;
+      }}
+  }
+  data={head,rows};
+  const info=$("info");
+  if(rows.length&&ok){info.className="ok";info.textContent="Converge: x ≈ "+last.toFixed(+$("dec").value)+" en "+rows.length+" iteraciones."}
+  else{info.className="er";info.textContent=(msg||"No alcanzó la tolerancia en "+rows.length+" iteraciones.")+(rows.length?" Último valor: "+last.toFixed(+$("dec").value):"")}
+  render();
+}
+
+function cell(v,i){
+  if(i===0)return v;
+  const s=v.toFixed(+$("dec").value);
+  return $("sep").value===","?s.replace(".",","):s;
+}
+function render(){
+  const t=$("tb");
+  t.innerHTML="<tr>"+data.head.map(h=>"<th>"+h+"</th>").join("")+"</tr>"+
+    data.rows.map(r=>"<tr>"+r.map((v,i)=>"<td>"+cell(v,i)+"</td>").join("")+"</tr>").join("");
+}
+function copy(){
+  const txt=[data.head.join("\t")].concat(data.rows.map(r=>r.map((v,i)=>cell(v,i)).join("\t"))).join("\n");
+  const done=()=>{$("cp").textContent="¡Copiado!";setTimeout(()=>$("cp").textContent="Copiar para Excel",1500)};
+  const fb=()=>{const ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");done()}catch(e){}ta.remove()};
+  try{navigator.clipboard.writeText(txt).then(done,fb)}catch(e){fb()}
+}
+
+$("fn").onchange=()=>{setDefaults();run()};
+$("mt").onchange=()=>{setDefaults();run()};
+$("sep").onchange=render;$("dec").onchange=run;
+$("go").onclick=run;$("cp").onclick=copy;
+setDefaults();run();
+</script>
+</body>
+</html>
